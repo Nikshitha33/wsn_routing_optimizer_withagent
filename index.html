@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WSN Routing Optimizer - Adaptive Fitness Simulation</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Chart.js for Performance Comparison Graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="logo-icon">&#9678;</div>
+            <div>
+                <h1>WSN Routing Optimizer</h1>
+                <p class="subtitle">Adaptive Fitness Function with TDO, CMTO &amp; AMGSO</p>
+            </div>
+        </div>
+        <div class="header-right">
+            <span class="badge" id="statusBadge">Ready</span>
+        </div>
+    </header>
+
+    <main class="main-layout">
+        <!-- LEFT PANEL: Configuration -->
+        <aside class="panel config-panel">
+            <h2 class="panel-title">
+                <span class="icon">&#9881;</span> Configuration
+            </h2>
+
+            <div class="config-group" style="border: 1px solid var(--accent); padding: 12px; border-radius: 8px; background: rgba(108, 99, 255, 0.05); margin-bottom: 15px;">
+                <label style="font-weight: 600; color: var(--accent); font-size: 13px; display: block; margin-bottom: 6px;">Select Routing Strategy</label>
+                <select id="routingFramework" class="select-input" onchange="onFrameworkChange()" style="border-color: var(--accent); font-weight: 500;">
+                    <option value="agent" selected>Option C: AI Agent Controlled (Dynamic)</option>
+                    <option value="traditional">Option A: Traditional (Mam's Model)</option>
+                    <option value="ai">Option B: AI-Based Optimization</option>
+                </select>
+            </div>
+
+            <div class="config-group">
+                <label>Sensor Nodes</label>
+                <input type="range" id="numNodes" min="10" max="700" value="100" oninput="updateLabel(this)">
+                <span class="range-value" id="numNodes_val">100</span>
+            </div>
+            
+            <div class="config-group">
+                <label>Network Traffic Level</label>
+                <select id="trafficLevel" class="select-input">
+                    <option value="low">Low Traffic</option>
+                    <option value="medium" selected>Medium Traffic</option>
+                    <option value="high">High Traffic</option>
+                </select>
+            </div>
+
+            <div class="config-group">
+                <label>Area Size (m)</label>
+                <input type="range" id="areaSize" min="50" max="500" value="100" oninput="updateLabel(this)">
+                <span class="range-value" id="areaSize_val">100</span>
+            </div>
+            <div class="config-group">
+                <label>Comm. Range (m)</label>
+                <input type="range" id="commRange" min="15" max="100" value="35" oninput="updateLabel(this)">
+                <span class="range-value" id="commRange_val">35</span>
+            </div>
+            <div class="config-group" style="display: none;">
+                <label>Cluster Heads</label>
+                <input type="range" id="numCH" min="2" max="30" value="5" disabled style="opacity: 0.6; cursor: not-allowed;">
+                <span class="range-value" id="numCH_val">Auto</span>
+            </div>
+            <div class="config-group">
+                <label>Simulation Rounds</label>
+                <input type="range" id="numRounds" min="1" max="50" value="5" oninput="updateLabel(this)">
+                <span class="range-value" id="numRounds_val">5</span>
+            </div>
+            <div class="config-group">
+                <label>Energy/Hop (x0.001 J)</label>
+                <input type="range" id="energyPerHop" min="5" max="50" value="10" oninput="updateLabel(this)">
+                <span class="range-value" id="energyPerHop_val">10</span>
+            </div>
+            <div class="config-group">
+                <label>Base Station X</label>
+                <input type="number" id="bsX" value="100" class="num-input">
+            </div>
+            <div class="config-group">
+                <label>Base Station Y</label>
+                <input type="number" id="bsY" value="100" class="num-input">
+            </div>
+
+            <!-- Energy Configuration Section -->
+            <div class="config-divider"></div>
+            <h2 class="panel-title" style="margin-top:8px;">
+                <span class="icon">&#9889;</span> Node Energy
+            </h2>
+
+            <div class="config-group">
+                <label>Energy Mode</label>
+                <select id="energyMode" class="select-input" onchange="onEnergyModeChange()">
+                    <option value="random">Random (0.3–0.6 J)</option>
+                    <option value="uniform">Uniform</option>
+                    <option value="distance">Distance-Based (0.3-0.7 J)</option>
+                    <option value="custom">Custom (Per-Node)</option>
+                </select>
+            </div>
+
+            <div class="config-group" id="uniformEnergyGroup" style="display:none;">
+                <label>Default Energy (J)</label>
+                <input type="number" id="uniformEnergy" value="0.5" step="0.01" min="0.01" max="2.0" class="num-input">
+            </div>
+
+            <div class="energy-btn-row">
+                <button class="btn btn-energy-default" onclick="applyDefaultEnergies()" title="Apply optimal distance-based energy">
+                    &#9733; Set Defaults
+                </button>
+                <button class="btn btn-energy-apply" id="btnApplyEnergy" onclick="applyCustomEnergies()" style="display:none;" title="Apply custom energies from table">
+                    &#10003; Apply
+                </button>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" id="btnDeploy" onclick="deployNetwork()">
+                    1. Deploy Nodes
+                </button>
+                <button class="btn btn-secondary" id="btnOptimize" onclick="runOptimization()" disabled>
+                    2. Run Optimization
+                </button>
+                <button class="btn btn-accent" id="btnSimulate" onclick="runSimulation()" disabled>
+                    3. Multi-Round Sim
+                </button>
+            </div>
+            <button class="btn btn-compare" id="btnCompare" onclick="runComparison()" style="width: 100%; margin-top: 8px; background: linear-gradient(135deg, #8e2de2, #4a00e0); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; display: none;" disabled>
+                📊 Compare Frameworks
+            </button>
+            <button class="btn btn-reset" onclick="resetAll()">Reset All</button>
+        </aside>
+
+        <!-- CENTER: Visualization Canvas & Graphs -->
+        <section class="panel center-panel" style="overflow-y: auto;">
+            <div class="canvas-header">
+                <h2 class="panel-title"><span class="icon">&#9673;</span> Network Visualization</h2>
+                <div class="view-toggles">
+                    <button class="toggle-btn active" id="viewAll" onclick="setView('all')">All Nodes</button>
+                    <button class="toggle-btn" id="viewPath" onclick="setView('path')">Optimal Path</button>
+                </div>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="networkCanvas" width="700" height="400"></canvas>
+                <div class="canvas-legend" id="canvasLegend" style="display:none;">
+                    <span class="legend-item"><span class="dot dot-blue"></span> Sensor Node</span>
+                    <span class="legend-item"><span class="dot dot-red"></span> Cluster Head</span>
+                    <span class="legend-item"><span class="dot dot-green"></span> Optimal Path</span>
+                    <span class="dot-line"></span><span class="legend-item"> Cluster Link</span>
+                    <span class="legend-item"><span class="dot dot-black"></span> Base Station</span>
+                    <span class="legend-item"><span class="dot dot-gray-cross"></span> Dead Node</span>
+                </div>
+            </div>
+
+            <!-- Network Stats Bar -->
+            <div class="network-stats" id="networkStats" style="display:none;">
+                <div class="stat-item">
+                    <span class="stat-label">Total</span>
+                    <span class="stat-value" id="statTotal">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Alive</span>
+                    <span class="stat-value stat-alive" id="statAlive">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Dead</span>
+                    <span class="stat-value stat-dead" id="statDead">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Avg Energy</span>
+                    <span class="stat-value stat-energy" id="statAvgEnergy">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Total Energy</span>
+                    <span class="stat-value stat-energy" id="statTotalEnergy">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Density</span>
+                    <span class="stat-value stat-density" id="statDensity">0</span>
+                </div>
+            </div>
+
+            <!-- Performance Comparison Graphs -->
+            <div class="graphs-container" id="graphsContainer" style="display:none; margin-top: 20px;">
+                <h2 class="panel-title"><span class="icon">&#128200;</span> Performance Comparison (Adaptive vs Fixed)</h2>
+                <div class="graphs-grid">
+                    <div class="graph-box">
+                        <h4>Energy Consumption</h4>
+                        <canvas id="energyGraph"></canvas>
+                    </div>
+                    <div class="graph-box">
+                        <h4>Fitness Improvement</h4>
+                        <canvas id="fitnessGraph"></canvas>
+                    </div>
+                    <div class="graph-box">
+                        <h4>Alive Nodes (Network Lifetime)</h4>
+                        <canvas id="aliveNodesGraph"></canvas>
+                    </div>
+                    <div class="graph-box">
+                        <h4>Path Cost (Hops)</h4>
+                        <canvas id="costGraph"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Results Section -->
+            <div class="graphs-container" id="comparisonContainer" style="display:none; margin-top: 20px; border-top: 2px dashed rgba(255,255,255,0.1); padding-top: 20px;">
+                <h2 class="panel-title" style="color: #ff007f;"><span class="icon">&#128203;</span> Comparison Results (Traditional vs AI Framework)</h2>
+                
+                <div class="network-stats" style="margin-bottom: 15px; background: rgba(255, 255, 255, 0.02); display: flex;">
+                    <div class="stat-item">
+                        <span class="stat-label">Traditional Hops</span>
+                        <span class="stat-value" id="compCostTrad" style="color: var(--accent);">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">AI Hops</span>
+                        <span class="stat-value" id="compCostAI" style="color: var(--green);">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Traditional Fitness</span>
+                        <span class="stat-value" id="compFitTrad" style="color: var(--accent);">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">AI Fitness</span>
+                        <span class="stat-value" id="compFitAI" style="color: var(--green);">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Traditional Quality</span>
+                        <span class="stat-value" id="compDelayTrad" style="color: var(--accent);">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">AI Quality</span>
+                        <span class="stat-value" id="compDelayAI" style="color: var(--green);">0</span>
+                    </div>
+                </div>
+
+                <div class="graphs-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div class="graph-box">
+                        <h4>Energy Comparison (J)</h4>
+                        <canvas id="compEnergyGraph"></canvas>
+                    </div>
+                    <div class="graph-box">
+                        <h4>Path Cost Comparison (Hops)</h4>
+                        <canvas id="compCostGraph"></canvas>
+                    </div>
+                    <div class="graph-box">
+                        <h4>Fitness Comparison</h4>
+                        <canvas id="compFitnessGraph"></canvas>
+                    </div>
+                    <div class="graph-box">
+                        <h4>Network Lifetime (Alive Nodes)</h4>
+                        <canvas id="compAliveGraph"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT PANEL: Results + Energy Table -->
+        <aside class="panel results-panel">
+            <h2 class="panel-title"><span class="icon">&#9733;</span> Analytics &amp; Routing Results</h2>
+
+            <!-- Traditional Framework Active Panel -->
+            <div class="result-card" id="traditionalActiveCard" style="display:none; border-color: var(--accent); background: rgba(108, 99, 255, 0.05);">
+                <h3 style="color: var(--accent); margin: 0;"><span class="icon">&#9889;</span> Traditional Framework Active</h3>
+                <p style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 0 0;">Using Traditional Meta-Heuristic Abstractions (TDO + CMTO + AMGSO) for routing optimization.</p>
+            </div>
+
+            <!-- AI Framework Active Panel -->
+            <div class="result-card" id="aiActiveCard" style="display:none; border-color: var(--green); background: rgba(46, 204, 113, 0.05);">
+                <h3 style="color: var(--green); margin: 0;"><span class="icon">&#129302;</span> AI Framework Active</h3>
+                <p style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 0 0;">Using Advanced AI Optimization (PSO + ACO + intelligent AI Agent) for routing optimization.</p>
+            </div>
+
+            <!-- AI Agent Decision Report Panel (Option B specific) -->
+            <div class="result-card" id="aiAgentReportCard" style="display:none; border-color: var(--cyan);">
+                <h3 style="color: var(--cyan);"><span class="icon">&#129302;</span> AI Agent Decision Report</h3>
+                <div id="aiAgentReportContent" style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+                    <div style="margin-bottom: 8px;">
+                        <strong>Network Condition:</strong>
+                        <ul style="margin: 4px 0; padding-left: 16px; color: var(--text-primary); list-style-type: square;">
+                            <li>Nodes: <span id="repNodes">0</span></li>
+                            <li>Traffic Level: <span id="repTraffic">Low</span></li>
+                            <li>Avg Energy: <span id="repEnergy">0 J</span></li>
+                            <li>Network Density: <span id="repDensity">0</span></li>
+                            <li>Dead Nodes: <span id="repDead">0</span></li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-bottom: 8px;">
+                        <strong>Agent Decisions:</strong>
+                        <ul style="margin: 4px 0; padding-left: 16px; list-style-type: none;">
+                            <li style="color: var(--green);">✓ Selected PSO for Cluster Head Selection</li>
+                            <li style="color: var(--blue);">✓ Selected ACO for Path Finding</li>
+                            <li style="color: var(--orange);" id="repPriorityActive">✓ Energy Priority Activated</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-bottom: 8px;">
+                        <strong>Dynamic Adaptive Weights:</strong>
+                        <div class="params-grid" style="margin-top: 4px;">
+                            <div class="param-item"><div class="param-label">&alpha; (Energy)</div><div class="param-value" id="repWeightAlpha">0.25</div></div>
+                            <div class="param-item"><div class="param-label">&beta; (Distance)</div><div class="param-value" id="repWeightBeta">0.25</div></div>
+                            <div class="param-item"><div class="param-label">&gamma; (Cost)</div><div class="param-value" id="repWeightGamma">0.25</div></div>
+                            <div class="param-item"><div class="param-label">&delta; (Quality)</div><div class="param-value" id="repWeightDelta">0.25</div></div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 6px;"><strong>Reason:</strong> <span id="repReason" style="color: var(--text-primary);">...</span></div>
+                    <div style="margin-bottom: 6px;"><strong>Routing Priority:</strong> <span id="repRoutingPriority" style="color: var(--orange); font-weight: bold;">...</span></div>
+                    <div style="border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 6px; margin-top: 6px;">
+                        <strong>Decided Cluster Heads:</strong>
+                        <div id="repDecidedCHs" style="color: var(--cyan); font-weight: bold; margin-top: 4px; font-family: 'JetBrains Mono', monospace;">None</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Agent Decision Report Card -->
+            <div class="result-card" id="aiAgentCard" style="display:none; border-color: var(--cyan);">
+                <h3 style="color: var(--cyan);"><span class="icon">&#129302;</span> AI Agent Decisions</h3>
+                <div id="aiAgentContent" style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+                    <div style="margin-bottom: 8px;"><strong>Reasoning:</strong> <span id="aiReasonText" style="color: var(--text-primary);"></span></div>
+                    <div class="params-grid" style="margin-bottom: 8px;">
+                        <div class="param-item"><div class="param-label">Priority</div><div class="param-value" id="aiPriority" style="font-size: 11px; color: var(--orange);"></div></div>
+                        <div class="param-item"><div class="param-label">CH Strategy</div><div class="param-value" id="aiCHStrategy" style="font-size: 11px; color: var(--green);"></div></div>
+                        <div class="param-item"><div class="param-label" style="grid-column: span 2;">Routing Strategy</div><div class="param-value" id="aiRoutingStrategy" style="font-size: 11px; color: var(--blue);"></div></div>
+                    </div>
+                    <div style="border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 6px; margin-top: 6px;">
+                        <strong>Decided Cluster Heads:</strong>
+                        <div id="aiDecidedCHs" style="color: var(--cyan); font-weight: bold; margin-top: 4px; font-family: 'JetBrains Mono', monospace;">None</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Algorithm Execution Flow -->
+            <div class="result-card" id="executionFlowCard" style="display:none;">
+                <h3>Algorithm Execution Flow</h3>
+                <div class="flow-container">
+                    <div class="flow-step" id="flow-tdo">
+                        <span class="flow-icon">1</span>
+                        <div class="flow-text"><strong>TDO</strong> <br>CH Selection</div>
+                    </div>
+                    <div class="flow-step" id="flow-cmto">
+                        <span class="flow-icon">2</span>
+                        <div class="flow-text"><strong>CMTO</strong> <br>Candidate Paths</div>
+                    </div>
+                    <div class="flow-step" id="flow-amgso">
+                        <span class="flow-icon">3</span>
+                        <div class="flow-text"><strong>AMGSO</strong> <br>Dead Nodes Excluded</div>
+                    </div>
+                    <div class="flow-step" id="flow-fitness">
+                        <span class="flow-icon">4</span>
+                        <div class="flow-text"><strong>Adaptive Fitness</strong> <br>Weights Applied</div>
+                    </div>
+                    <div class="flow-step" id="flow-optimal">
+                        <span class="flow-icon">5</span>
+                        <div class="flow-text"><strong>Optimal Path</strong> <br>Selected</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Optimal Path & Alternatives Card -->
+            <div class="result-card" id="optimalCard" style="display:none;">
+                <h3>Path Alternatives</h3>
+                <div id="pathAlternativesDisplay" style="margin-bottom: 12px;"></div>
+                
+                <h3 style="margin-top:10px;">Selected Optimal Path</h3>
+                <div class="path-display" id="pathDisplay"></div>
+                <div class="params-grid" id="paramsGrid"></div>
+            </div>
+
+            <!-- Adaptive Weights Card -->
+            <div class="result-card" id="weightsCard" style="display:none;">
+                <h3>Dynamic Adaptive Weights</h3>
+                <div id="weightsScenario" style="font-size: 11px; color: var(--accent); margin-bottom: 8px; font-weight: bold;"></div>
+                <div id="weightsDisplay"></div>
+            </div>
+
+            <!-- Node Energy Table Card -->
+            <div class="result-card" id="energyTableCard" style="display:none;">
+                <h3>Node Energy Configuration</h3>
+                <div class="energy-table-controls">
+                    <div class="energy-search-row">
+                        <input type="text" id="energySearch" class="num-input energy-search" placeholder="Search node ID..." oninput="filterEnergyTable()">
+                        <span class="energy-page-info" id="energyPageInfo">Page 1/1</span>
+                    </div>
+                    <div class="energy-pagination" id="energyPagination">
+                        <button class="btn-page" onclick="energyTablePage(-1)">&#9664;</button>
+                        <button class="btn-page" onclick="energyTablePage(1)">&#9654;</button>
+                    </div>
+                </div>
+                <div class="table-wrapper" id="energyTableBody"></div>
+            </div>
+
+            <!-- Console Log -->
+            <div class="result-card console-card">
+                <h3>Console Log</h3>
+                <div class="console-log" id="consoleLog">
+                    <div class="log-entry log-info">System ready. Configure parameters and deploy nodes.</div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Simulation Summary Modal -->
+    <div id="summaryModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2 class="modal-title">Simulation Summary</h2>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-label">Total Nodes</div>
+                    <div class="summary-value" id="sumTotalNodes">0</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Cluster Heads</div>
+                    <div class="summary-value" id="sumCH">0</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Alive Nodes</div>
+                    <div class="summary-value" style="color: var(--green);" id="sumAliveNodes">0</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Dead Nodes</div>
+                    <div class="summary-value" style="color: var(--red);" id="sumDeadNodes">0</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Best Fitness</div>
+                    <div class="summary-value" style="color: var(--cyan);" id="sumBestFitness">0</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">Energy Saved (vs Fixed)</div>
+                    <div class="summary-value" style="color: var(--orange);" id="sumEnergySaved">0%</div>
+                </div>
+            </div>
+            <button class="btn btn-primary" style="margin-top: 20px; width: 100%;" onclick="closeSummaryModal()">Close</button>
+        </div>
+    </div>
+
+    <script src="agent.js"></script>
+    <script src="engine.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
