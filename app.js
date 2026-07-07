@@ -311,12 +311,16 @@ function runOptimization() {
         density: stats ? parseFloat(stats.density) : 0
     };
     
-    // Call the intelligent agent
+    // Call the intelligent agent — runs BOTH frameworks internally and picks winner
     let agentDecision = wsnAgent.analyzeAndDecide(networkState, nodes, c.bsX, c.bsY);
-    log(`[AI AGENT] Analyzed network. Priority: ${agentDecision.priority}`, 'step');
-    
+    const cLog = agentDecision.competitionLog;
+    log(`[AI AGENT] ▶ AI AGENT FRAMEWORK COMPETITION`, 'step');
+    log(`[AI AGENT]   Traditional │ Fitness: ${cLog.traditional.fitness.toFixed(4)} │ Suitability: ${cLog.traditional.suitabilityRaw}pts (norm ${cLog.traditional.suitabilityNorm.toFixed(2)}) │ Final Score: ${cLog.traditional.finalScore.toFixed(4)}`, 'step');
+    log(`[AI AGENT]   AI-Based    │ Fitness: ${cLog.ai.fitness.toFixed(4)} │ Suitability: ${cLog.ai.suitabilityRaw}pts (norm ${cLog.ai.suitabilityNorm.toFixed(2)}) │ Final Score: ${cLog.ai.finalScore.toFixed(4)}`, 'step');
+    log(`[AI AGENT] ✔ Winner: ${cLog.winner === 'ai' ? 'PSO+ACO (AI-Based)' : 'TDO+CMTO+AMGSO (Traditional)'} | Priority: ${agentDecision.priority}`, 'result');
+    log(`[AI AGENT]   Reason: ${agentDecision.reason}`, 'result');
+
     let activeFramework = framework === 'agent' ? agentDecision.framework : framework;
-    log(`[AI AGENT] Selected Framework: ${activeFramework === 'ai' ? 'AI-Based (PSO+ACO)' : 'Traditional (TDO+CMTO+AMGSO)'} based on traffic level (${c.trafficLevel})`, 'step');
 
     // Show/hide correct panels based on activeFramework and framework selection
     document.getElementById('traditionalActiveCard').style.display = 'none';
@@ -331,7 +335,8 @@ function runOptimization() {
         document.getElementById('aiPriority').innerText = agentDecision.priority;
         document.getElementById('aiCHStrategy').innerText = agentDecision.chStrategy;
         document.getElementById('aiRoutingStrategy').innerText = agentDecision.routingStrategy;
-        
+        // Show competition log under the Traditional agent card
+        _renderCompetitionLog(cLog, agentDecision.reason);
         // Update execution flow step labels
         document.getElementById('flow-tdo').innerHTML = '<span class="flow-icon">1</span><div class="flow-text"><strong>TDO</strong> <br>CH Selection</div>';
         document.getElementById('flow-cmto').innerHTML = '<span class="flow-icon">2</span><div class="flow-text"><strong>CMTO</strong> <br>Candidate Paths</div>';
@@ -352,7 +357,10 @@ function runOptimization() {
         document.getElementById('repReason').innerText = agentDecision.reason;
         document.getElementById('repRoutingPriority').innerText = agentDecision.priority;
         document.getElementById('repPriorityActive').innerText = `✓ ${agentDecision.priority} Activated`;
-        
+
+        // ── Competition log panel ──
+        _renderCompetitionLog(cLog, agentDecision.reason);
+
         // Update execution flow step labels
         document.getElementById('flow-tdo').innerHTML = '<span class="flow-icon">1</span><div class="flow-text"><strong>PSO</strong> <br>CH Selection</div>';
         document.getElementById('flow-cmto').innerHTML = '<span class="flow-icon">2</span><div class="flow-text"><strong>ACO</strong> <br>Optimal Paths</div>';
@@ -689,6 +697,75 @@ function showSummaryModal() {
 function closeSummaryModal() {
     document.getElementById('summaryModal').style.display = 'none';
 }
+
+// ── Competition Log Renderer ──
+function _renderCompetitionLog(cLog, reason) {
+    if (!cLog) return;
+    const container = document.getElementById('competitionLogPanel');
+    if (!container) return;
+
+    const tradWin = cLog.winner === 'traditional';
+    const aiWin   = cLog.winner === 'ai';
+    const f        = cLog.formula || { W_FITNESS: 0.7, W_SUITABILITY: 0.3 };
+
+    // Condition badges
+    const badge = (label, active, color) =>
+        `<span class="clog-badge" style="background:${active ? color : 'rgba(255,255,255,0.05)'}; color:${active ? '#fff' : 'var(--text-muted)'};">${label}</span>`;
+
+    const condBadges = `
+        ${badge('High Traffic',  cLog.conditions.trafficLevel === 'high',   '#e74c3c')}
+        ${badge('Med Traffic',   cLog.conditions.trafficLevel === 'medium', '#e67e22')}
+        ${badge('Low Traffic',   cLog.conditions.trafficLevel === 'low',    '#27ae60')}
+        ${badge('Large Nodes',   cLog.conditions.largeNodes,  '#8e44ad')}
+        ${badge('Large Area',    cLog.conditions.areaLarge,   '#2980b9')}
+        ${badge('Low Energy',    cLog.conditions.lowEnergy,   '#c0392b')}
+        ${badge('Many Dead',     cLog.conditions.manyDead,    '#7f8c8d')}
+        ${badge('Dense',         cLog.conditions.dense,       '#16a085')}
+    `;
+
+    // Score row builder
+    const scoreRow = (label, tradVal, aiVal, unit = '', highlight = false) => {
+        const tradBold = highlight && tradWin;
+        const aiBold   = highlight && aiWin;
+        return `
+        <div class="clog-row">
+            <div class="clog-row-label">${label}</div>
+            <div class="clog-row-val ${tradBold ? 'clog-row-win' : ''}">${tradVal}${unit}</div>
+            <div class="clog-row-val ${aiBold   ? 'clog-row-win' : ''}">${aiVal}${unit}</div>
+        </div>`;
+    };
+
+    container.innerHTML = `
+    <div class="clog-title">⚡ AI Agent Framework Competition</div>
+
+    <div class="clog-badges">${condBadges}</div>
+
+    <div class="clog-formula">
+        Final = <strong>${(f.W_FITNESS*100).toFixed(0)}%</strong> × Fitness<sub>norm</sub>
+              + <strong>${(f.W_SUITABILITY*100).toFixed(0)}%</strong> × Suitability<sub>norm</sub>
+    </div>
+
+    <div class="clog-table">
+        <div class="clog-row clog-header">
+            <div class="clog-row-label">Metric</div>
+            <div class="clog-row-val">${tradWin ? '🏆 ' : ''}Traditional</div>
+            <div class="clog-row-val">${aiWin   ? '🏆 ' : ''}AI-Based</div>
+        </div>
+        ${scoreRow('Fitness Score',      cLog.traditional.fitness.toFixed(4),      cLog.ai.fitness.toFixed(4))}
+        ${scoreRow('Fitness (norm)',      cLog.traditional.fitnessNorm.toFixed(4),  cLog.ai.fitnessNorm.toFixed(4))}
+        ${scoreRow('Suitability (pts)',   cLog.traditional.suitabilityRaw,          cLog.ai.suitabilityRaw,      ' pts')}
+        ${scoreRow('Suitability (norm)',  cLog.traditional.suitabilityNorm.toFixed(2), cLog.ai.suitabilityNorm.toFixed(2))}
+        ${scoreRow('FINAL SCORE',         cLog.traditional.finalScore.toFixed(4),   cLog.ai.finalScore.toFixed(4), '', true)}
+    </div>
+
+    <div class="clog-winner-row">
+        Selected: <strong>${aiWin ? 'PSO + ACO (AI-Based)' : 'TDO + CMTO + AMGSO (Traditional)'}</strong>
+    </div>
+    <div class="clog-reason">${reason || ''}</div>
+    `;
+    container.style.display = 'block';
+}
+
 
 // ── UI Updates ──
 function updateResultsUI(best, chList, alternatives) {

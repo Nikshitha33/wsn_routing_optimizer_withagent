@@ -34,9 +34,9 @@
             <div class="config-group" style="border: 1px solid var(--accent); padding: 12px; border-radius: 8px; background: rgba(108, 99, 255, 0.05); margin-bottom: 15px;">
                 <label style="font-weight: 600; color: var(--accent); font-size: 13px; display: block; margin-bottom: 6px;">Select Routing Strategy</label>
                 <select id="routingFramework" class="select-input" onchange="onFrameworkChange()" style="border-color: var(--accent); font-weight: 500;">
-                    <option value="agent" selected>Option C: AI Agent Controlled (Dynamic)</option>
-                    <option value="traditional">Option A: Traditional (Mam's Model)</option>
+                    <option value="traditional">Option A: Traditional</option>
                     <option value="ai">Option B: AI-Based Optimization</option>
+                    <option value="agent" selected>Option C: AI Agent Controlled (Dynamic)</option>
                 </select>
             </div>
 
@@ -316,6 +316,9 @@
                         <strong>Decided Cluster Heads:</strong>
                         <div id="repDecidedCHs" style="color: var(--cyan); font-weight: bold; margin-top: 4px; font-family: 'JetBrains Mono', monospace;">None</div>
                     </div>
+
+                    <!-- Competition Log Panel -->
+                    <div id="competitionLogPanel" style="display:none; margin-top: 10px;"></div>
                 </div>
             </div>
 
